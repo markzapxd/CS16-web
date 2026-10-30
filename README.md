@@ -28,24 +28,26 @@ O cliente extrai o ZIP sequencialmente e carrega o manifesto `/deployment-preloa
 
 ## Dados externos e início
 
-A imagem nova **não contém os dados comerciais do jogo**. Forneça uma instalação autorizada em `custom-content/` (não envie os dados comerciais para Git/GHCR):
+A imagem nova **não contém os dados comerciais do jogo**. No primeiro `docker compose up -d`, o serviço `game-data` baixa o release HLDS 8308 original para um volume nomeado e prepara `valve/`, `cstrike/` e o ZIP do navegador. O servidor espera a preparação terminar com sucesso. Reinícios reutilizam o volume; `docker compose down -v` remove os dados e exige novo download. Reserve aproximadamente 2 GB livres para a preparação, além das imagens.
+
+Origem: `https://github.com/EXORTEM/hlds/releases/download/8308/hlds_build_8308.zip` (redirecionamento do repositório DevilBoy-eXe original). SHA-256 fixado: `03a1035e6a479ccf0a64e842fe0f0315f1f2f9e0160619127a61ae68cdb37df9`, medido no download completo de 433317491 bytes em 2026-10-30; o metadata GitHub não publica digest independente desse asset antigo. Checksum divergente interrompe a preparação antes da extração. Não se executam programas do arquivo baixado.
+
+Os recursos Garten continuam separados e versionados (não envie dados comerciais para Git/GHCR):
 
 ```text
 custom-content/
-  valve/                 # dados Half-Life necessários ao servidor
-  cstrike/               # dados Counter-Strike necessários ao servidor
+  cstrike/
     maps/garten_v05.bsp   # conteúdo Garten versionado é preservado
-  valve.zip              # ZIP contendo valve/ e cstrike/ para o navegador
   preload.json
 ```
 
-Os dados comerciais não são preparados pelo clone; o entrypoint falha explicitamente se faltarem `valve/`, `cstrike/` ou `valve.zip`. Isso é diferente da imagem derivada antiga, que os incluía. Depois da compilação e validação da imagem nova:
+Depois da compilação e validação da imagem nova (o padrão Compose ainda mantém a versão anterior até essa validação):
 
 ```sh
 CS16_IMAGE=cs16-web:source docker compose up -d
 ```
 
-O Compose mantém o início em um comando para uma instalação com conteúdo preparado. `CONTENT_DIR` permite apontar para outra pasta. O conteúdo é montado somente leitura e vinculado ao servidor/HTTP; arquivos da imagem têm precedência. Recrie o container depois de mudar a estrutura dos arquivos.
+O Compose prepara os dados automaticamente no primeiro início. `CONTENT_DIR` permite apontar para outra pasta. O conteúdo é montado somente leitura e vinculado ao servidor/HTTP; arquivos da imagem têm precedência. Recrie o container depois de mudar a estrutura dos arquivos.
 
 HTTP escuta em **0.0.0.0:8080** no host (27016/TCP interno). `HTTP_BIND`/`HTTP_PORT` alteram a publicação. `ADVERTISED_IP` deve ser o endereço alcançável pelos jogadores; seu padrão é `127.0.0.1`, adequado apenas a acesso local. WebRTC usa 27018/TCP e UDP, não transportados por um proxy HTTP comum. Engine nativo usa 27015/UDP interno. Não inicie em paralelo com essas mesmas portas ocupadas pela produção.
 

@@ -1,5 +1,15 @@
 services:
+  game-data:
+    build:
+      context: .
+      dockerfile: build/data-init.Dockerfile
+    volumes:
+      - game-data:/data
+    restart: "no"
   cs16:
+    depends_on:
+      game-data:
+        condition: service_completed_successfully
     image: ${CS16_IMAGE:-ghcr.io/markzapxd/cs16-web/portable-cs16:sha-b125113}
     platform: linux/amd64
     environment:
@@ -12,6 +22,7 @@ services:
       - "27018:27018/udp"
       - "27018:27018/tcp"
     volumes:
+      - game-data:/game-data:ro
       - type: bind
         source: ${CONTENT_DIR:-./custom-content}
         target: /content
@@ -19,3 +30,6 @@ services:
         bind:
           create_host_path: true
     restart: unless-stopped
+
+volumes:
+  game-data:
