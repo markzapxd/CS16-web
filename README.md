@@ -1,74 +1,69 @@
-# Deploy portátil CS 1.6 Web
+# CS16 Web
 
-## Estado da migração
+Counter-Strike 1.6 no navegador, com o mapa **Garten** e inicialização pelo Docker Compose.
 
-O Dockerfile compila engine nativo, bindings Go, engine WebAssembly e cliente CS a partir de fontes fixadas. Nenhum estágio herda outra imagem de servidor CS. O Compose usa a imagem independente validada, fixada por digest.
+## Iniciar
 
-## Clonar e iniciar
+Requer **Git**, **Docker com Compose** e acesso à internet.
 
-```sh
+```bash
 git clone https://github.com/markzapxd/CS16-web.git
 cd CS16-web
 docker compose up -d
 ```
 
-Abra `http://localhost:8080` ou `http://IP-DO-SERVIDOR:8080`. Não é necessário criar `.env`, executar `export` ou copiar o Garten. Docker com Compose e acesso à internet são necessários; a primeira inicialização baixa os dados e pode demorar. HTTP escuta em todas as interfaces. Libere 8080/TCP e 27018/UDP no firewall; NAT/proxies podem exigir configuração de rede (veja `NETWORKING.md`).
+Acesse **http://localhost:8080** ou **http://IP-DO-SERVIDOR:8080**.
 
-## Construção independente
+Na primeira inicialização, os dados do jogo são baixados e preparados automaticamente. Aguarde a conclusão; reserve cerca de **2 GB livres além das imagens**. Não é necessário criar `.env` nem copiar o mapa.
 
-```sh
+## Acesso pela rede
+
+O servidor HTTP escuta em `0.0.0.0:8080`. Libere estas portas no firewall:
+
+| Porta | Uso |
+| --- | --- |
+| `8080/TCP` | Página e conexão WebSocket |
+| `27018/UDP` e `27018/TCP` | WebRTC |
+
+O endereço anunciado é obtido automaticamente do endereço usado para abrir a página. Roteadores, NAT e proxies podem exigir ajustes: veja [NETWORKING.md](NETWORKING.md).
+
+## Comandos úteis
+
+```bash
+# Acompanhar a preparação e os logs
+docker compose logs -f
+
+# Parar sem apagar os dados
+docker compose down
+
+# Aplicar atualizações do repositório
+git pull
+docker compose up -d
+```
+
+> `docker compose down -v` apaga o volume de dados e exige um novo download.
+
+## Mapas customizados
+
+O Garten já acompanha o repositório em `custom-content/cstrike/maps/`.
+
+Para adicionar conteúdo:
+
+1. Coloque mapas e recursos em `custom-content/cstrike/`, preservando as pastas `maps`, `models`, `sound` etc.
+2. Liste o BSP e suas dependências em `custom-content/preload.json`.
+3. Ajuste `MAP` no `docker-compose.yaml` e recrie o container com `docker compose up -d --force-recreate cs16`.
+
+**Limitação conhecida:** faltam seis modelos de veículos do Garten. O mapa é jogável, mas esses objetos não são exibidos corretamente. O preload não acompanha trocas de mapa durante a partida automaticamente.
+
+## Imagem e fontes
+
+A imagem é compilada a partir das fontes e publicada no [GHCR](https://github.com/markzapxd/CS16-web/pkgs/container/cs16-web%2Fsource-cs16), sem usar uma imagem de servidor CS de terceiros como base. O Compose fixa a versão por digest.
+
+Para compilar localmente, opcionalmente:
+
+```bash
 docker build -t cs16-web:source .
+CS16_IMAGE=cs16-web:source docker compose up -d
 ```
 
-A compilação usa bastante disco e memória. Prefira o workflow manual `Publish source-built portable CS16 image`, que publica uma imagem separada em `ghcr.io/markzapxd/cs16-web/source-cs16:sha-<commit>`. Não atualiza automaticamente o Compose nem a produção.
-
-### Proveniência das fontes
-
-- Engine nativo: `https://github.com/FWGS/xash3d-fwgs`, commit `d3bc7fabeea8586f38a501b4cc6233fa0545f5f0`.
-- Engine navegador: mesmo repositório, commit `f85aa0c8f7d46c27191132b44d872c8e331308de` (gitlink do projeto de referência).
-- Cliente CS: `https://github.com/FWGS/cs16-client`, commit `2490c5e9b66928e86df191ec1cdd802b6357a71c` (gitlink do projeto de referência).
-- Bindings Go: `https://github.com/jklenner/goxash3d-fwgs`, commit `dd563e429ad3c4a0e96ad929b1e87911d7f94c6d`. É o objeto original da revisão `dd563e429ad3` requerida no go.mod, preservado no fork.
-- `vendor/server` e `vendor/engine-wrapper`: fontes do projeto `https://github.com/sealdev224/webxash3d-fwgs-cstrike`, commit `ed3ec1fc3781c5dedd1dd52c23b2d96bfed7584c`, copiadas do checkout de referência. O cliente local já continha preload Garten; a alteração de build substitui-o pelo manifesto externo. Licença preservada em `vendor/LICENSE.md`; demais licenças permanecem nas árvores recuperadas.
-- Submódulos são resolvidos pelos gitlinks fixados dos commits acima. URLs desativadas `github.com/yohimik/` são redirecionadas para a rede de forks `github.com/FWGS/`; a revisão é mantida, não substituída por HEAD.
-- Toolchains: Debian trixie, Go 1.25.1, Node 22, Emscripten 4.0.23 (engine) e 4.0.17 (CS), conforme receitas de referência. Tags das imagens de toolchain e dependências npm transitivas ainda não estão integralmente fixadas por digest/lock; isto não promete reprodução bit a bit.
-
-`build/patch-source.py` remove a liberação dos ponteiros interiores de `fragment_data_block` no engine nativo. O bloco proprietário e os arrays são liberados uma única vez. O patch exige contexto único e falha se a fonte mudar. Não modifica executáveis existentes nem usa o patch binário antigo `patch.py` (arquivo legado não utilizado pelo build).
-
-O cliente extrai o ZIP sequencialmente e carrega o manifesto `/deployment-preload.json` antes de iniciar. Erros HTTP e caminhos inválidos interrompem o preload. Não usa IndexedDB para o ZIP; o arquivo e seus dados ainda consomem memória.
-
-## Dados externos e início
-
-A imagem nova **não contém os dados comerciais do jogo**. No primeiro `docker compose up -d`, o serviço `game-data` baixa o release HLDS 8308 original para um volume nomeado e prepara `valve/`, `cstrike/` e o ZIP do navegador. O servidor espera a preparação terminar com sucesso. Reinícios reutilizam o volume; `docker compose down -v` remove os dados e exige novo download. Reserve aproximadamente 2 GB livres para a preparação, além das imagens.
-
-Origem: `https://github.com/EXORTEM/hlds/releases/download/8308/hlds_build_8308.zip` (redirecionamento do repositório DevilBoy-eXe original). SHA-256 fixado: `03a1035e6a479ccf0a64e842fe0f0315f1f2f9e0160619127a61ae68cdb37df9`, medido no download completo de 433317491 bytes em 2026-10-30; o metadata GitHub não publica digest independente desse asset antigo. Checksum divergente interrompe a preparação antes da extração. Não se executam programas do arquivo baixado.
-
-Os recursos Garten continuam separados e versionados (não envie dados comerciais para Git/GHCR):
-
-```text
-custom-content/
-  cstrike/
-    maps/garten_v05.bsp   # conteúdo Garten versionado é preservado
-  preload.json
-```
-
-O Compose já aponta para a imagem independente validada. Para testar uma compilação própria, opcionalmente use `CS16_IMAGE=cs16-web:source docker compose up -d`; isso não é necessário no uso normal.
-
-O Compose prepara os dados automaticamente no primeiro início. `CONTENT_DIR` permite apontar para outra pasta. O conteúdo é montado somente leitura e vinculado ao servidor/HTTP; arquivos da imagem têm precedência. Recrie o container depois de mudar a estrutura dos arquivos.
-
-HTTP escuta em **0.0.0.0:8080** no host (27016/TCP interno). `HTTP_BIND`/`HTTP_PORT` alteram a publicação. `ADVERTISED_IP` fica vazio por padrão: o servidor anuncia o IP ou domínio usado para abrir a página, sem exigir `export` ou `.env`. Um valor explícito sobrescreve essa seleção; veja `NETWORKING.md` para limites de NAT, DNS e proxies. WebRTC usa 27018/TCP e UDP, não transportados por um proxy HTTP comum. Engine nativo usa 27015/UDP interno. Não inicie em paralelo com essas mesmas portas ocupadas pela produção.
-
-`MAP` tem padrão `garten_v05`, `MAXPLAYERS` tem padrão 16. O manifesto contém caminhos públicos relativos, por exemplo:
-
-```json
-["cstrike/maps/garten_v05.bsp", "cstrike/models/garten/exemplo.mdl"]
-```
-
-Os caminhos começam com `cstrike/`, não admitem componentes vazios ou `..`. Sem manifesto, o preload usa apenas `cstrike/maps/${MAP}.bsp`. O preload não acompanha troca de mapa durante a partida automaticamente.
-
-Os seis modelos de veículos Garten continuam ausentes na instalação de origem. Não foram criados recursos fictícios. Adicione os recursos reais e autorizados aos caminhos necessários e ao manifesto quando disponíveis.
-
-## Validação e limites
-
-Build independente concluído no Actions (run `41097393345`, revisão `e7e64bc`). Imagem testada: `ghcr.io/markzapxd/cs16-web/source-cs16@sha256:72fe248d3daab64af36429c1ff61d07a67ef90c27019add53ca88ed0aa726fa6`. Uma instalação isolada com volume inicialmente vazio baixou e preparou os dados automaticamente. Chromium carregou o WebAssembly, conectou por WebRTC com IP automático e exibiu o Garten e a seleção de time após 120 segundos, sem erros JavaScript observados. A captura foi inspecionada visualmente. Isso não constitui teste de carga, estabilidade prolongada ou conectividade por todas as topologias NAT/internet.
-
-As licenças de software não concedem direitos sobre os dados Valve nem mapas de terceiros. Preserve avisos e cumpra os requisitos de distribuição das licenças de cada componente; os links e revisões acima identificam as fontes utilizadas.
+Baseado em [Xash3D FWGS](https://github.com/FWGS/xash3d-fwgs), [CS16 Client](https://github.com/FWGS/cs16-client), [Go bindings](https://github.com/jklenner/goxash3d-fwgs) e [WebXash3D](https://github.com/sealdev224/webxash3d-fwgs-cstrike). As revisões estão fixadas no Dockerfile; a licença das fontes vendorizadas está em [vendor/LICENSE.md](vendor/LICENSE.md). Dados Valve e mapas de terceiros têm direitos e condições próprios.
