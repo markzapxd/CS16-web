@@ -1,0 +1,4 @@
+*
+!Dockerfile
+!patch.py
+!entrypoint.sh

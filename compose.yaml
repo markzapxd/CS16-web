@@ -1,0 +1,23 @@
+services:
+  cs16:
+    image: ${CS16_IMAGE:-cs16-portable:local}
+    build:
+      context: .
+    platform: linux/amd64
+    environment:
+      MAP: ${MAP:-garten_v05}
+      MAXPLAYERS: ${MAXPLAYERS:-16}
+      IP: ${ADVERTISED_IP:?Set ADVERTISED_IP to an address reachable by players}
+      PORT: "27018"
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:27016/tcp"
+      - "27018:27018/udp"
+      - "27018:27018/tcp"
+    volumes:
+      - type: bind
+        source: ${CONTENT_DIR:?Set CONTENT_DIR to an absolute path}
+        target: /content
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped
