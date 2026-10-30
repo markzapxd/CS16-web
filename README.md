@@ -2,7 +2,17 @@
 
 ## Estado da migração
 
-O Dockerfile agora compila engine nativo, bindings Go, engine WebAssembly e cliente CS a partir de fontes fixadas. Nenhum estágio herda outra imagem de servidor CS. **A compilação completa e uma sessão no navegador ainda precisam ser validadas.** O Compose mantém a imagem publicada anterior até essa validação; não confunda seus resultados anteriores com os deste novo Dockerfile.
+O Dockerfile compila engine nativo, bindings Go, engine WebAssembly e cliente CS a partir de fontes fixadas. Nenhum estágio herda outra imagem de servidor CS. O Compose usa a imagem independente validada, fixada por digest.
+
+## Clonar e iniciar
+
+```sh
+git clone https://github.com/markzapxd/CS16-web.git
+cd CS16-web
+docker compose up -d
+```
+
+Abra `http://localhost:8080` ou `http://IP-DO-SERVIDOR:8080`. Não é necessário criar `.env`, executar `export` ou copiar o Garten. Docker com Compose e acesso à internet são necessários; a primeira inicialização baixa os dados e pode demorar. HTTP escuta em todas as interfaces. Libere 8080/TCP e 27018/UDP no firewall; NAT/proxies podem exigir configuração de rede (veja `NETWORKING.md`).
 
 ## Construção independente
 
@@ -41,11 +51,7 @@ custom-content/
   preload.json
 ```
 
-Depois da compilação e validação da imagem nova (o padrão Compose ainda mantém a versão anterior até essa validação):
-
-```sh
-CS16_IMAGE=cs16-web:source docker compose up -d
-```
+O Compose já aponta para a imagem independente validada. Para testar uma compilação própria, opcionalmente use `CS16_IMAGE=cs16-web:source docker compose up -d`; isso não é necessário no uso normal.
 
 O Compose prepara os dados automaticamente no primeiro início. `CONTENT_DIR` permite apontar para outra pasta. O conteúdo é montado somente leitura e vinculado ao servidor/HTTP; arquivos da imagem têm precedência. Recrie o container depois de mudar a estrutura dos arquivos.
 
@@ -63,6 +69,6 @@ Os seis modelos de veículos Garten continuam ausentes na instalação de origem
 
 ## Validação e limites
 
-A migração teve conferência de acessibilidade dos commits e testes estáticos de patch/Compose. A compilação Docker completa deve ocorrer no Actions devido ao espaço local limitado. Ainda não há validação de execução, estabilidade nativa, carregamento WebAssembly ou sessão WebRTC desta imagem nova. Os resultados da imagem derivada anterior não validam esta compilação. Não troque a produção até esses testes passarem.
+Build independente concluído no Actions (run `41097393345`, revisão `e7e64bc`). Imagem testada: `ghcr.io/markzapxd/cs16-web/source-cs16@sha256:72fe248d3daab64af36429c1ff61d07a67ef90c27019add53ca88ed0aa726fa6`. Uma instalação isolada com volume inicialmente vazio baixou e preparou os dados automaticamente. Chromium carregou o WebAssembly, conectou por WebRTC com IP automático e exibiu o Garten e a seleção de time após 120 segundos, sem erros JavaScript observados. A captura foi inspecionada visualmente. Isso não constitui teste de carga, estabilidade prolongada ou conectividade por todas as topologias NAT/internet.
 
 As licenças de software não concedem direitos sobre os dados Valve nem mapas de terceiros. Preserve avisos e cumpra os requisitos de distribuição das licenças de cada componente; os links e revisões acima identificam as fontes utilizadas.
