@@ -10,12 +10,12 @@ services:
     depends_on:
       game-data:
         condition: service_completed_successfully
-    image: ${CS16_IMAGE:-ghcr.io/markzapxd/cs16-web/portable-cs16:sha-b125113}
+    image: ${CS16_IMAGE:-ghcr.io/markzapxd/cs16-web/source-cs16@sha256:345fa356acf95a18f60ccc5000ca3ed3b226f4416ca082153a2f809013265433}
     platform: linux/amd64
     environment:
       MAP: ${MAP:-garten_v05}
       MAXPLAYERS: ${MAXPLAYERS:-16}
-      IP: ${ADVERTISED_IP:-127.0.0.1}
+      IP: ${ADVERTISED_IP:-}
       PORT: "27018"
     ports:
       - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8080}:27016/tcp"

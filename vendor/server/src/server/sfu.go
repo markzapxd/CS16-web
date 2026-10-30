@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -14,6 +15,7 @@ import (
 	"github.com/yohimik/goxash3d-fwgs/pkg"
 	"io"
 	"math/rand"
+	stdnet "net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -71,7 +73,7 @@ var (
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 
-	api *webrtc.API
+	newPeerAPI func(context.Context, string) (*webrtc.API, error)
 
 	// lock for peerConnections and trackLocals
 	listLock        sync.RWMutex
@@ -278,7 +280,12 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) { // nolint
 	// When this frame returns close the Websocket
 	defer c.Close() //nolint
 
-	// Create new PeerConnection
+	// Each request gets its own immutable ICE settings; only the UDP mux is shared.
+	api, err := newPeerAPI(r.Context(), r.Host)
+	if err != nil {
+		log.Errorf("Failed to configure PeerConnection: %v", err)
+		return
+	}
 	peerConnection, err := api.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		log.Errorf("Failed to creates a PeerConnection: %v", err)
@@ -639,39 +646,92 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func runSFU() {
+// advertisedICEIPs uses the browser's websocket authority, never proxy headers or
+// a public-IP discovery service. DNS is bounded and failure leaves normal ICE
+// interface gathering enabled. One address per family avoids ambiguous 1:1 maps.
+func advertisedICEIPs(ctx context.Context, override, authority string, lookup func(context.Context, string) ([]stdnet.IPAddr, error)) []string {
+	if override = strings.TrimSpace(override); override != "" {
+		return []string{override}
+	}
+	host := authority
+	if h, _, err := stdnet.SplitHostPort(authority); err == nil {
+		host = h
+	} else {
+		host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
+	}
+	if ip := stdnet.ParseIP(host); ip != nil {
+		return []string{ip.String()}
+	}
+	// Reject malformed authorities before handing anything to the resolver.
+	if host == "" || strings.ContainsAny(host, ":/\\@ 	\r\n") {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	addresses, err := lookup(ctx, host)
+	if err != nil {
+		return nil
+	}
+	var ipv4, ipv6 string
+	for _, address := range addresses {
+		if address.IP == nil || address.Zone != "" {
+			continue
+		}
+		if address.IP.To4() != nil {
+			if ipv4 == "" {
+				ipv4 = address.IP.String()
+			}
+		} else if ipv6 == "" {
+			ipv6 = address.IP.String()
+		}
+	}
+	ips := []string{}
+	if ipv4 != "" {
+		ips = append(ips, ipv4)
+	}
+	if ipv6 != "" {
+		ips = append(ips, ipv6)
+	}
+	return ips
+}
+
+func peerAPI(udpMux ice.UDPMux, ips []string) (*webrtc.API, error) {
 	settingEngine := webrtc.SettingEngine{}
 	settingEngine.DetachDataChannels()
+	if udpMux != nil {
+		settingEngine.SetICEUDPMux(udpMux)
+	}
+	if len(ips) > 0 {
+		settingEngine.SetNAT1To1IPs(ips, webrtc.ICECandidateTypeHost)
+	}
+	m := &webrtc.MediaEngine{}
+	if err := m.RegisterDefaultCodecs(); err != nil {
+		return nil, err
+	}
+	i := &interceptor.Registry{}
+	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
+		return nil, err
+	}
+	return webrtc.NewAPI(webrtc.WithSettingEngine(settingEngine), webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i)), nil
+}
 
-	port, ok := os.LookupEnv("PORT")
-	if ok {
-		p, err := strconv.Atoi(port)
-		if err == nil {
-			udpMux, err := ice.NewMultiUDPMuxFromPort(p)
+func runSFU() {
+	var udpMux ice.UDPMux
+	if port, ok := os.LookupEnv("PORT"); ok {
+		if p, err := strconv.Atoi(port); err == nil {
+			mux, err := ice.NewMultiUDPMuxFromPort(p)
 			if err != nil {
 				panic(err)
 			}
-			settingEngine.SetICEUDPMux(udpMux)
+			udpMux = mux
 		}
 	}
-
-	ip, ok := os.LookupEnv("IP")
-	if ok {
-		settingEngine.SetNAT1To1IPs([]string{ip}, webrtc.ICECandidateTypeHost)
+	// Capture the override once, but derive automatic addresses independently for
+	// every websocket. Do not mutate an API/SettingEngine shared by active peers.
+	override := os.Getenv("IP")
+	newPeerAPI = func(ctx context.Context, host string) (*webrtc.API, error) {
+		return peerAPI(udpMux, advertisedICEIPs(ctx, override, host, stdnet.DefaultResolver.LookupIPAddr))
 	}
-
-	m := &webrtc.MediaEngine{}
-	err := m.RegisterDefaultCodecs()
-	if err != nil {
-		panic(err)
-	}
-
-	i := &interceptor.Registry{}
-	err = webrtc.RegisterDefaultInterceptors(m, i)
-	if err != nil {
-		panic(err)
-	}
-	api = webrtc.NewAPI(webrtc.WithSettingEngine(settingEngine), webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i))
 
 	// Init other state
 	trackLocals = map[string]*webrtc.TrackLocalStaticRTP{}
