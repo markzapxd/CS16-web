@@ -20,7 +20,9 @@ COPY --from=native /engine/build/engine/libxash.a /bindings/pkg/libxash.a
 COPY --from=native /engine/build/public/libbuild_vcs.a /bindings/pkg/libbuild_vcs.a
 COPY --from=native /engine/build/public/libpublic.a /bindings/pkg/libpublic.a
 COPY --from=native /engine/build/3rdparty/libbacktrace/libbacktrace.a /bindings/pkg/libbacktrace.a
-COPY --from=native /engine/build/3rdparty/library_suffix/liblibrary_suffix.a /bindings/pkg/liblibrary_suffix.a
+# This native revision predates library_suffix; the bindings only name it as a
+# linker input and call no symbols from it. Remove that newer-engine link flag.
+RUN test "$(grep -c -- '-llibrary_suffix' /bindings/pkg/host.go)" = 1 && sed -i 's/ -llibrary_suffix$//' /bindings/pkg/host.go
 ENV GOARCH=386 CGO_ENABLED=1 CC="gcc -m32 -D__i386__" CGO_CFLAGS="-fopenmp -m32 -fno-ipa-cp" CGO_LDFLAGS="-fopenmp -m32"
 RUN go build -trimpath -o /out/xash ./src/server
 
