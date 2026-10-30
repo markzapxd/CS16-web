@@ -10,9 +10,10 @@ docker compose up -d
 
 Sem configuração adicional, baixa a imagem publicada e inicia `de_dust2` em
 http://127.0.0.1:8080. A pasta `custom-content/` é criada automaticamente.
-O padrão é acesso local: para jogadores em outra máquina, configure
-`ADVERTISED_IP` com o IP acessível do servidor e `HTTP_BIND=0.0.0.0` no Compose
-ou em um `.env`. Libere as portas descritas abaixo.
+HTTP escuta em `0.0.0.0:8080`, acessível pelas interfaces do servidor.
+Para jogar de outra máquina, configure `ADVERTISED_IP` com o IP acessível do
+servidor no Compose ou em um `.env`. `0.0.0.0` é endereço de escuta, não um
+endereço anunciável para WebRTC. Libere as portas descritas abaixo.
 Se o pacote GHCR estiver privado, o Docker precisa estar autenticado para baixá-lo.
 
 Para Garten, coloque os arquivos em `custom-content/cstrike/` e altere o padrão
@@ -48,7 +49,7 @@ Os caminhos são relativos ao conteúdo público, começam com `cstrike/`, não 
 
 A inspeção do container atual e do código confirmou:
 
-- HTTP/estáticos e sinalização WebSocket: **27016/TCP interno**. O compose publica em `127.0.0.1:8080` por padrão. Ajuste `HTTP_BIND`/`HTTP_PORT` ou use proxy reverso com suporte a WebSocket e HTTPS.
+- HTTP/estáticos e sinalização WebSocket: **27016/TCP interno**. O compose publica em `0.0.0.0:8080` por padrão. Ajuste `HTTP_BIND`/`HTTP_PORT` ou use proxy reverso com suporte a WebSocket e HTTPS.
 - `PORT=27018` é a porta **WebRTC**, não HTTP. Publicamos 27018 TCP e UDP, mantendo o mesmo número no host e container. Libere/encaminhe essas portas no firewall/NAT; um proxy HTTP sozinho não transporta esse tráfego.
 - `IP` anuncia o endereço ICE aos navegadores. `ADVERTISED_IP` tem padrão local `127.0.0.1` no compose e deve ser alcançável pelos jogadores, não o IP bridge do Docker. O container existente usa `10.7.4.3`; isso é específico daquela rede, não um padrão portátil.
 - Engine nativo: 27015/UDP interno, não publicado neste exemplo.
