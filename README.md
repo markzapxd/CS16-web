@@ -49,7 +49,7 @@ CS16_IMAGE=cs16-web:source docker compose up -d
 
 O Compose prepara os dados automaticamente no primeiro início. `CONTENT_DIR` permite apontar para outra pasta. O conteúdo é montado somente leitura e vinculado ao servidor/HTTP; arquivos da imagem têm precedência. Recrie o container depois de mudar a estrutura dos arquivos.
 
-HTTP escuta em **0.0.0.0:8080** no host (27016/TCP interno). `HTTP_BIND`/`HTTP_PORT` alteram a publicação. `ADVERTISED_IP` deve ser o endereço alcançável pelos jogadores; seu padrão é `127.0.0.1`, adequado apenas a acesso local. WebRTC usa 27018/TCP e UDP, não transportados por um proxy HTTP comum. Engine nativo usa 27015/UDP interno. Não inicie em paralelo com essas mesmas portas ocupadas pela produção.
+HTTP escuta em **0.0.0.0:8080** no host (27016/TCP interno). `HTTP_BIND`/`HTTP_PORT` alteram a publicação. `ADVERTISED_IP` fica vazio por padrão: o servidor anuncia o IP ou domínio usado para abrir a página, sem exigir `export` ou `.env`. Um valor explícito sobrescreve essa seleção; veja `NETWORKING.md` para limites de NAT, DNS e proxies. WebRTC usa 27018/TCP e UDP, não transportados por um proxy HTTP comum. Engine nativo usa 27015/UDP interno. Não inicie em paralelo com essas mesmas portas ocupadas pela produção.
 
 `MAP` tem padrão `garten_v05`, `MAXPLAYERS` tem padrão 16. O manifesto contém caminhos públicos relativos, por exemplo:
 
