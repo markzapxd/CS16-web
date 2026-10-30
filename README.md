@@ -8,7 +8,7 @@ Derivação `linux/amd64` da imagem upstream fixada por digest no Dockerfile. Ne
 docker compose up -d
 ```
 
-Sem configuração adicional, baixa a imagem publicada e inicia `de_dust2` em
+Sem configuração adicional, baixa a imagem publicada e inicia `garten_v05` em
 http://127.0.0.1:8080. A pasta `custom-content/` é criada automaticamente.
 HTTP escuta em `0.0.0.0:8080`, acessível pelas interfaces do servidor.
 Para jogar de outra máquina, configure `ADVERTISED_IP` com o IP acessível do
@@ -16,24 +16,24 @@ servidor no Compose ou em um `.env`. `0.0.0.0` é endereço de escuta, não um
 endereço anunciável para WebRTC. Libere as portas descritas abaixo.
 Se o pacote GHCR estiver privado, o Docker precisa estar autenticado para baixá-lo.
 
-Para Garten, coloque os arquivos em `custom-content/cstrike/` e altere o padrão
-`MAP` no `docker-compose.yaml` para `garten_v05`. Também é possível sobrescrever
-`CONTENT_DIR`, `MAP`, `CS16_IMAGE` e demais opções por `.env`, sem ser obrigatório.
+## Conteúdo customizado versionado
 
-## Conteúdo customizado
-
-Prepare o conteúdo **antes** de iniciar, fora do repositório:
+O BSP Garten já acompanha o clone em `custom-content/cstrike/maps/garten_v05.bsp`.
+Não é necessário preparar `/srv/cs16-content` nem copiar o mapa manualmente.
+O Compose monta `./custom-content` automaticamente e inicia Garten por padrão.
 
 ```text
-/srv/cs16-content/
+custom-content/
   cstrike/
     maps/garten_v05.bsp
-    models/...                 # dependências reais do mapa
-    sound/...
-    sprites/...
-    *.wad
-  preload.json                 # opcional
+  preload.json
 ```
+
+**Dependências ainda ausentes:** os seis modelos de veículos Garten não estão
+disponíveis na instalação de origem e não foram incluídos. O mapa pode mostrar
+quadrados rosa/preto nesses objetos. Não há modelos, sons ou WADs fictícios no
+repositório. Quando os recursos reais estiverem disponíveis, devem ser adicionados
+nos respectivos caminhos em `custom-content/cstrike/` e no manifesto.
 
 O mesmo diretório `cstrike` é vinculado, somente leitura na origem, a `/xashds/cstrike` (servidor nativo) e `/xashds/public/cstrike` (HTTP). Arquivos upstream existentes são preservados, não substituídos; remova/recrie o container após mudar a estrutura de conteúdo. Não monte um diretório vazio por cima de todo `/xashds/cstrike` ou `/xashds/public`: isso esconderia os arquivos originais.
 
@@ -72,6 +72,6 @@ Não foi validada nesta entrega uma sessão completa em navegador, mapa Garten c
 
 ## Publicação e licenças
 
-O workflow `.github/workflows/portable-cs16.yaml` constrói a raiz do repositório e publica em `ghcr.io/markzapxd/cs16-web-portable/portable-cs16` por execução manual ou tags `portable-cs16-v*`. O workflow não é executado no push normal: verifique os direitos de redistribuição da imagem base antes de acioná-lo.
+O workflow `.github/workflows/portable-cs16.yaml` constrói a raiz do repositório e publica em `ghcr.io/markzapxd/cs16-web/portable-cs16` por execução manual ou tags `portable-cs16-v*`. O workflow não é executado no push normal: verifique os direitos de redistribuição da imagem base antes de acioná-lo.
 
 **Não envie `gamefiles.zip`, `valve.zip`, arquivos comerciais do Counter-Strike/Half-Life ou recursos de mapas sem autorização ao GitHub/GHCR.** O `.dockerignore` limita o contexto aos scripts de deploy. A imagem base já contém dados do jogo: herdar essa imagem também pode redistribuí-los. A licença do código deste repositório não concede direitos sobre conteúdo Valve ou mapas de terceiros; verifique os direitos antes de publicar, inclusive imagens derivadas e pacotes públicos. Volumes externos não substituem essa análise jurídica.

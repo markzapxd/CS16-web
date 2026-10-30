@@ -3,7 +3,7 @@ services:
     image: ${CS16_IMAGE:-ghcr.io/markzapxd/cs16-web/portable-cs16:sha-b125113}
     platform: linux/amd64
     environment:
-      MAP: ${MAP:-de_dust2}
+      MAP: ${MAP:-garten_v05}
       MAXPLAYERS: ${MAXPLAYERS:-16}
       IP: ${ADVERTISED_IP:-127.0.0.1}
       PORT: "27018"
