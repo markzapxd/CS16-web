@@ -1,4 +1,10 @@
 *
 !Dockerfile
-!patch.py
 !entrypoint.sh
+!build/
+!build/**
+!vendor/
+!vendor/**
+vendor/**/.git
+vendor/**/node_modules
+vendor/**/dist

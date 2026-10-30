@@ -1,0 +1,151 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background:
+        linear-gradient(
+            rgba(0, 0, 0, 0.5),
+            rgba(0, 0, 0, 0.5)
+        ),
+        url("media/background.jpg");
+
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    width: 100vw;
+    height: 100vh;
+}
+
+* {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bolder;
+}
+
+.loading-bar {
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 50px;
+}
+
+.pregame-info {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: Arial, Helvetica, sans-serif !important;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-bar progress {
+    width: 350px;
+    pointer-events: none;
+    border-radius: 0px;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.loading-bar p {
+    font-weight: bolder;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+}
+
+.notDraggable {
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+}
+
+img {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 100vw;
+    max-height: 100vh;
+    animation-name: pulsate;
+    animation-duration: 0.75s;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+    z-index: 2;
+    transition: opacity ease-in-out 0.5s;
+}
+
+canvas {
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+form {
+    margin: 0;
+    padding: 16px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: white;
+    background-color: black;
+}
+
+form > div {
+    display: flex;
+    justify-content: space-between;
+}
+
+#warning {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    text-align: center;
+    color: red;
+    opacity: 0;
+    transition: opacity ease-in-out 0.5s;
+}
+
+progress::-webkit-progress-bar {
+    background-color: #eee;
+}
+
+progress::-webkit-progress-value {
+    background-color: #f6b265;
+}
+
+progress::-moz-progress-bar {
+    background-color: #f6b265;
+}
+
+#social {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+audio {
+    display: none;
+}
+
+
+
+
+
+
